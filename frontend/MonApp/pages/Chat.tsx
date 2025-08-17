@@ -13,7 +13,7 @@ export const socket = io('http://10.0.2.2:5000');
 const Chat: React.FC<Props> = ({route}) => {
 
   const { user } = route.params;
-  const [message, setMessage] = useState<{ message: string; userId: string }>({ message: '', userId: '' });
+  const [message, setMessage] = useState<{ message: string; userId: string }>({ message: '', userId: ''});
   const [messages, setMessages] = useState<{ message: string; userId: string }[]>([]);
   const [userId, setUserId] = useState('');
   const [userName, setUserName] = useState('');
@@ -33,19 +33,17 @@ const Chat: React.FC<Props> = ({route}) => {
   }, [user]);
 
   useEffect(() => {
-    socket.emit('register', userId);
-    socket.on('message', 
-      async(newMessage: { message: string; userId: string;}) => {
-      await setMessages((prevMessages) => [
-        ...prevMessages, 
-        {message: newMessage.message, userId: newMessage.userId}
-      ]);
+    socket.on('message', async (newMessage) => {
+      await setMessages(prev => [...prev, {
+        message: newMessage.message,
+        userId: newMessage.userId,
+      }]);
     });
 
     return () => {
       socket.off('message');
     };
-  }, [userId]);
+  }, [userId, user.email]);
 
   const sendMessage = async () => {
     try {
@@ -63,19 +61,17 @@ const Chat: React.FC<Props> = ({route}) => {
       </View>
       
       <View style={styles.zoneMessage}>
-        <ScrollView
-        >
+        <ScrollView>
           {
             messages.map((msg, index) => (
-              <View key={index} style={userId === msg.userId ? styles.messageContainer : styles.messageContainer2}>
-                <Text style={userId === msg.userId ? styles.nomUser : styles.nomUser2}>{userName}</Text>
-                <View style={userId === msg.userId ? styles.messageContent : styles.messageContent2}>
-                  <Text style={userId === msg.userId ? styles.messageText : styles.messageText2}>{msg.message}</Text>
+              <View key={index} style={userId === msg.userId ? styles.messageContainer2 : styles.messageContainer}>
+                <Text style={userId === msg.userId ? styles.nomUser2 : styles.nomUser}>{userName}</Text>
+                <View style={userId === msg.userId ? styles.messageContent2 : styles.messageContent}>
+                  <Text style={userId === msg.userId ? styles.messageText2 : styles.messageText}>{msg.message}</Text>
                 </View>
               </View>
             ))
           }
-
         </ScrollView>
       </View>
       
@@ -85,7 +81,7 @@ const Chat: React.FC<Props> = ({route}) => {
             placeholder="Type your message..." 
             style={styles.input} 
             value={message.message}
-            onChangeText={(text) => setMessage({ message: text, userId: userId })}
+            onChangeText={(text) => setMessage({ message: text, userId: userId})}
           />
           <TouchableOpacity
             onPress={sendMessage}

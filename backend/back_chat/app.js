@@ -12,53 +12,67 @@ const port = 5000
 const server = http.createServer(app);
 const io = socketIo(server);
 
-app.use(cors())
+app.use(cors());
 app.use(express.json())
 app.use('/api/auth', authRoutes);
 
 const users = {};
-
 io.on('connection', (socket) => {
   console.log('New client connected', socket.id);
 
-  // Enregistrer l'utilisateur avec son email (userId) lors de sa connexion
   socket.on('register', (userId) => {
-    // Enregistrer le `userId` (email) et associer avec `socket.id`
-    users[socket.id] = userId;
-    console.log(`User ${userId} registered with socket id: ${socket.id}`);
+    users[userId] = socket.id; 
+    Object.entries(users).forEach(([id, socketId]) => {
+      console.log(`User ${id} is connected with socket ID: ${socketId}`);
+    });
+    
+    console.log(`User ${userId} registered, socket ID: ${socket.id}`);
   });
 
-  // Envoi du message au destinataire
   socket.on('sendMessage', (data) => {
-    console.log('Message reçu:', data);
-    
-    // Trouver le socket du destinataire à partir du `receiverId`
-    const recipientSocketId = users[data.receiverId];  
-    console.log(`Message envoyé à ${data.receiverId}`);// Récupérer l'ID du destinataire
-    if (recipientSocketId) {
+    const recipientSocketId = users[data.receiverId];
+    const senderSocketId = users[data.userId];
+    console.log(`Message from ${data.userId} to ${data.receiverId}, recipient socket ID: ${recipientSocketId}`);
+    console.log(`Message from ${data.userId} to ${data.userId}, sender socket ID: ${senderSocketId}`);
+    if (recipientSocketId || senderSocketId) {
       io.to(recipientSocketId).emit('message', {
         message: data.message,
         userId: data.userId,
+        receiverId: data.receiverId 
       });
-      console.log(`Message envoyé à ${data.receiverId}`);
-    } else {
+      io.to(senderSocketId).emit('message', {
+        message: data.message,
+        userId: data.userId,
+        receiverId: data.receiverId 
+      });
+    }else{
       console.log('Destinataire non trouvé!');
     }
   });
 
-  // Déconnexion de l'utilisateur et suppression du `userId` dans `users`
-  socket.on('disconnect', () => {
-    console.log('User disconnected', socket.id);
-    for (const [userId, id] of Object.entries(users)) {
-      if (id === socket.id) {
-        delete users[userId];
-        console.log(`User ${userId} removed from active users list`);
-        break;
-      }
+  let manualLogout = false;
+
+  socket.on('logout',(userId) => {
+    manualLogout = true;
+    if (users[userId]) {
+      delete users[userId];
+      console.log(`User ${userId} logged out and removed from users list`);
     }
   });
-});
 
+  socket.on('disconnect', () => {
+    if(!manualLogout) {          // Nettoyage amélioré
+      Object.keys(users).forEach(userId => {
+        if (users[userId] === socket.id) {
+          delete users[userId];
+        }
+      });
+    }
+
+  });
+
+
+});
 // Connexion à la base de données MongoDB
 mongoose.connect(process.env.DB_URI, {
   useNewUrlParser: true,

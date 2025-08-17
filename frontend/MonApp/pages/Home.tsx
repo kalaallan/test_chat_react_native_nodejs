@@ -56,10 +56,11 @@ const Home: React.FC<Props> = ({navigation}) => {
   const { items, status } = useSelector((state: RootState) => state.listUsers);
   console.log(items);
 
-  const retourLogin = () => {
+  const retourLogin = async () => {
     dispatch(logout());
     socket.emit('logout', email);
     socket.disconnect();
+    await new Promise<void>(resolve => setTimeout(resolve, 1000)); // Attendre 1 seconde
     Alert.alert('Déconnexion', 'Vous avez été déconnecté avec succès.');
     navigation.replace('Login');
   }

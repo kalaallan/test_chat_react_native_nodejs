@@ -5,6 +5,7 @@ import { Text, View, Alert, StyleSheet, TextInput, TouchableOpacity, Pressable, 
 
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
+import { socket } from './Chat';
 import api from '../api';
 
 
@@ -30,10 +31,15 @@ const Login: React.FC<Props> = ({navigation, route}) => {
     try {
       const response = await api.post('/api/auth/login', { email, password });
       console.log(response);
+      if (!response.data?.token || !response.data.email) {
+        Alert.alert('Erreur', 'Identifiants incorrects. Veuillez réessayer.');
+        return;
+      }
       // Dispatch login action
       dispatch(setLoginStatus(true));
       dispatch(setUserCredentials({ token: response.data.token }));
-      dispatch(setUserInfo({ email, name: response.data.name, id: response.data._id }));
+      dispatch(setUserInfo({ email: response.data.email, name: response.data.name, id: response.data._id }));
+      socket.emit('register', response.data.email);
       Alert.alert('Succès', 'Vous êtes connecté avec succès !');
       navigation.replace('Home');
       setEmail('');
